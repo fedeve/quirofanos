@@ -1,0 +1,1167 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\EstadoTurno;
+use App\Models\Turno;
+use App\Models\Paciente;
+use App\Models\Institucion;
+use App\Models\Obra_social;
+use App\Models\Profesional;
+use App\Models\TipoTurno;
+use App\Models\Practica;
+use App\Models\ProfesionalAfin;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Auth;
+use JeroenNoten\LaravelAdminLte\View\Components\Widget\Card;
+
+class TurnoController extends Controller
+{
+    public function index(Request $request)
+    {
+         //$this->migrarDatos();
+        $turnos = Turno::search($request)->get(); 
+        
+        $fecha_desde = null;
+
+        if (isset($request->fec_desde)) {
+            $fecha_desde = $request->fec_desde;
+        }
+        $fecha_hasta = null;
+
+        if (isset($request->fec_hasta)) {
+            $fecha_hasta = $request->fec_hasta;
+        }
+
+        $estado_turnos = EstadoTurno::orderBy('denominacion')->pluck('denominacion', 'id')->all();
+        $estado_turnos = array('' => trans('message.select')) + $estado_turnos;
+
+        if (isset($request->id_estado_turnos)) {
+            $id_estado_turnos = $request->id_estado_turnos;
+        } else {
+            $id_estado_turnos = null;
+        }
+
+        $tipos_turno = TipoTurno::orderBy('denominacion')->pluck('denominacion', 'id')->all();
+        $tipos_turno = array('' => trans('message.select')) + $tipos_turno;
+
+        if (isset($request->id_tipos_turno)) {
+            $id_tipos_turno = $request->id_tipos_turno;
+        } else {
+            $id_tipos_turno = null;
+        }
+
+
+        $profesionales = Profesional::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $profesionales = array('' => trans('message.select')) + $profesionales;
+
+        if (isset($request->id_profesional)) {
+            $id_profesional = $request->id_profesional;
+        } else {
+            $id_profesional = null;
+        }
+
+
+        $instituciones = Institucion::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $instituciones = array('' => trans('message.select')) + $instituciones;
+
+        if (isset($request->id_institucion)) {
+            $id_institucion = $request->id_institucion;
+        } else {
+            $id_institucion = null;
+        }
+
+        return view('admin.turnos.index', compact(
+            'turnos',
+            'fecha_desde',
+            'fecha_hasta',
+            'estado_turnos',
+            'id_estado_turnos',
+            'tipos_turno',
+            'id_tipos_turno',
+            'profesionales',
+            'id_profesional',
+            'instituciones',
+            'id_institucion'
+        ));
+    }
+
+    public function create_fecha($hora, $minuto, $fecha)
+    {
+
+        if (isset(Auth::user()->Profesional)) {
+            $minutos_profe = Auth::user()->Profesional->minutos_hab;
+            $hora_inicio_profe = Auth::user()->Profesional->hora_inicio;
+            $hora_fin_profe = Auth::user()->Profesional->hora_fin;
+        } else {
+            $minutos_profe =  env('MINUTOS');
+            $hora_inicio_profe =  env('HORA_INICIO');
+            $hora_fin_profe =   intval(env('HORA_FIN'));
+        }
+        $intervalo = '00';
+        while ($intervalo < 60) {
+            $minutos[$intervalo] = $intervalo;
+            $intervalo += $minutos_profe;
+        }
+
+        $horas = [];
+        $hora_inico = intval($hora_inicio_profe);
+        while ($hora_inico  <= $hora_fin_profe) {
+            if ($hora_inico < 10) {
+                $hora_inico = '0' . $hora_inico;
+            }
+            $horas[$hora_inico] = $hora_inico;
+            $hora_inico++;
+        }
+
+        $pacientes = Paciente::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $pacientes = array('' => trans('message.select')) + $pacientes;
+
+        $profesionales = Profesional::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $profesionales = array('' => trans('message.select')) + $profesionales;
+
+
+        $profesionales_afines = ProfesionalAfin::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $profesionales_afines = array('' => trans('message.select')) + $profesionales_afines;
+
+        $obras_sociales = Obra_social::orderBy('denominacion_amigable')->pluck('denominacion_amigable', 'id')->all();
+        $obras_sociales = array('' => trans('message.select')) + $obras_sociales; 
+
+        $instituciones = Institucion::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $instituciones = array('' => trans('message.select')) + $instituciones;
+
+        $tipos_turno = TipoTurno::orderBy('denominacion')->pluck('denominacion', 'id')->all();
+        $tipos_turno = array('' => trans('message.select')) + $tipos_turno;
+
+        $practicas = Practica::orderBy('denominacion')->pluck('denominacion', 'id')->all();
+        $practicas = array('' => trans('message.select')) + $practicas;
+        $hora_hasta = $hora + 1;
+
+        $hora_hasta = str_pad($hora_hasta, 2, '0', STR_PAD_LEFT);
+        $hora = str_pad($hora, 2, '0', STR_PAD_LEFT);
+
+        return view('admin.turnos.edit', compact(
+            'pacientes','obras_sociales',
+            'profesionales',
+            'profesionales_afines',
+            'instituciones',
+            'tipos_turno',
+            'practicas',
+            'horas',
+            'minutos',
+            'hora',
+            'minuto',
+            'hora_hasta',
+            'fecha'
+        ));
+    }
+
+    public function create()
+    {
+
+        if (isset(Auth::user()->Profesional)) {
+            $minutos_profe = Auth::user()->Profesional->minutos_hab;
+            $hora_inicio_profe = Auth::user()->Profesional->hora_inicio;
+            $hora_fin_profe = Auth::user()->Profesional->hora_fin;
+        } else {
+            $minutos_profe =  env('MINUTOS');
+            $hora_inicio_profe =  env('HORA_INICIO');
+            $hora_fin_profe =   intval(env('HORA_FIN'));
+        }
+        $intervalo = '00';
+        while ($intervalo < 60) {
+            $minutos[$intervalo] = $intervalo;
+            $intervalo += $minutos_profe;
+        }
+
+        $horas = [];
+        $hora_inico = intval($hora_inicio_profe);
+        while ($hora_inico  <= $hora_fin_profe) {
+            if ($hora_inico < 10) {
+                $hora_inico = '0' . $hora_inico;
+            }
+            $horas[$hora_inico] = $hora_inico;
+            $hora_inico++;
+        }
+
+        $pacientes = Paciente::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $pacientes = array('' => trans('message.select')) + $pacientes;
+
+        $profesionales = Profesional::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $profesionales = array('' => trans('message.select')) + $profesionales;
+
+        $profesionales_afines = ProfesionalAfin::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $profesionales_afines = array('' => trans('message.select')) + $profesionales_afines;
+
+        $instituciones = Institucion::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $instituciones = array('' => trans('message.select')) + $instituciones;
+
+        $tipos_turno = TipoTurno::orderBy('denominacion')->pluck('denominacion', 'id')->all();
+        $tipos_turno = array('' => trans('message.select')) + $tipos_turno;
+
+        $obras_sociales = Obra_social::orderBy('denominacion_amigable')->pluck('denominacion_amigable', 'id')->all();
+        $obras_sociales = array('' => trans('message.select')) + $obras_sociales; 
+
+
+        $practicas = Practica::orderBy('denominacion')->pluck('denominacion', 'id')->all();
+        $practicas = array('' => trans('message.select')) + $practicas;
+        $hora_hasta = intval($hora_inicio_profe);
+        $hora_hasta++;
+        $hora_hasta = str_pad($hora_hasta, 2, '0', STR_PAD_LEFT);
+
+        return view('admin.turnos.edit', compact(
+            'pacientes','obras_sociales',
+            'profesionales',
+            'profesionales_afines',
+            'instituciones',
+            'tipos_turno',
+            'practicas',
+            'horas',
+            'minutos',
+            'hora_hasta'
+        ));
+    }
+
+    public function store(Request $request)
+    {
+
+          $url = $request->url;
+        try {
+            $turno = new turno($request->all());
+            if (isset(Auth::user()->Profesional)) {
+                $turno->id_profesional = Auth::user()->id_profesional;
+            }
+            if ($request->nombre_paciente !== '' && $request->nombre_paciente !== null) {
+                $paciente = new Paciente();
+                $paciente->nombre = $request->nombre_paciente;
+                $paciente->telefono = $request->telefono_paciente;
+
+                $paciente->save();
+
+                $turno->id_paciente = $paciente->id;
+            }
+            if ($request->nombre_profesional !== '' && $request->nombre_profesional !== null) {
+                $profesional = new ProfesionalAfin();
+                $profesional->nombre = $request->nombre_profesional;
+                $profesional->matricula = $request->matricula_profesional;
+
+                $profesional->save();
+
+                $turno->id_profesional_afin = $profesional->id;
+            }
+
+            $turno->id_estado_turnos = 1;
+
+            //variables calendar
+            $fecha= new Carbon($turno->fecha);
+            $turno->start = $fecha->format('Y-m-d') .'T'.  $turno->hora_inicio . ':'.$turno->minuto_inicio . ':00';
+            $turno->end = $fecha->format('Y-m-d') .'T'.  $turno->hora_inicio . ':'.$turno->minuto_inicio . ':00';
+             
+             
+            $turno->title = isset($turno->Paciente) ? $turno->Paciente->nombre : 'Turno ' . $turno->id;
+            $turno->title = $turno->title .  (isset($turno->Profesional) ? ' - ' .$turno->Profesional->nombre : '' );
+            $turno->backgroundColor = '#ffffff';
+            $turno->borderColor = isset($turno->Institucion) ? $turno->Institucion->color : '#5589cdff';
+            $turno->textColor = isset($turno->Institucion) ? $turno->Institucion->color : '#5589cdff';
+      
+
+            $turno->save();
+
+           
+       session()->flash('alert-success', trans('message.successaction'));
+            return redirect($url)->with('success', 'Data saved successfully!');
+        } catch (QueryException  $ex) {
+
+            session()->flash('alert-danger', $ex->getMessage());
+            return redirect($url) ->with('error', 'Some problem occurred, please try again!');
+        }
+    }
+
+    /**
+     * Display the specified resource.
+     *
+     * @param  int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id) {}
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {
+        if (isset(Auth::user()->Profesional)) {
+            $minutos_profe = Auth::user()->Profesional->minutos_hab;
+            $hora_inicio_profe = Auth::user()->Profesional->hora_inicio;
+            $hora_fin_profe = Auth::user()->Profesional->hora_fin;
+        } else {
+            $minutos_profe =  env('MINUTOS');
+            $hora_inicio_profe =  env('HORA_INICIO');
+            $hora_fin_profe =   intval(env('HORA_FIN'));
+        }
+        $intervalo = '00';
+        while ($intervalo < 60) {
+            $minutos[$intervalo] = $intervalo;
+            $intervalo += $minutos_profe;
+        }
+
+        $horas = [];
+        $hora_inico = intval($hora_inicio_profe);
+        while ($hora_inico  <= $hora_fin_profe) {
+            if ($hora_inico < 10) {
+                $hora_inico = '0' . $hora_inico;
+            }
+            $horas[$hora_inico] = $hora_inico;
+            $hora_inico++;
+        }
+
+        $turno = turno::findOrFail($id);
+
+        $pacientes = Paciente::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $pacientes = array('' => trans('message.select')) + $pacientes;
+
+        $profesionales = Profesional::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $profesionales = array('' => trans('message.select')) + $profesionales;
+
+
+        $profesionales_afines = ProfesionalAfin::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $profesionales_afines = array('' => trans('message.select')) + $profesionales_afines;
+
+
+        $instituciones = Institucion::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $instituciones = array('' => trans('message.select')) + $instituciones;
+
+        $estado_turnos = EstadoTurno::orderBy('denominacion')->pluck('denominacion', 'id')->all();
+        $estado_turnos = array('' => trans('message.select')) + $estado_turnos;
+
+        $tipos_turno = TipoTurno::orderBy('denominacion')->pluck('denominacion', 'id')->all();
+        $tipos_turno = array('' => trans('message.select')) + $tipos_turno;
+
+        $practicas = Practica::orderBy('denominacion')->pluck('denominacion', 'id')->all();
+        $practicas = array('' => trans('message.select')) + $practicas;
+
+          $obras_sociales = Obra_social::orderBy('denominacion_amigable')->pluck('denominacion_amigable', 'id')->all();
+        $obras_sociales = array('' => trans('message.select')) + $obras_sociales; 
+
+        return view('admin.turnos.edit', compact(
+            'turno','obras_sociales',
+            'pacientes',
+            'profesionales',
+            'profesionales_afines',
+            'instituciones',
+            'estado_turnos',
+            'tipos_turno',
+            'practicas',
+            'horas',
+            'minutos'
+        ));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request $request
+     * @param  int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(Request $request, $id)
+    {
+          $url = $request->url;
+        try {
+            $turno = Turno::findOrFail($id);
+            if ($request->nombre_paciente !== '' && $request->nombre_paciente !== null) {
+                $paciente = new Paciente();
+                $paciente->nombre = $request->nombre_paciente;
+                $paciente->telefono = $request->telefono_paciente;
+
+                $paciente->save();
+
+                $turno->id_paciente = $paciente->id;
+            } else {
+                $turno->id_paciente = $request->id_paciente;
+            }
+            if ($request->nombre_profesional !== '' && $request->nombre_profesional !== null) {
+                $profesional = new ProfesionalAfin();
+                $profesional->nombre = $request->nombre_profesional;
+                $profesional->matricula = $request->matricula_profesional;
+
+                $profesional->save();
+
+                $turno->id_profesional_afin = $profesional->id;
+            } else {
+                $turno->id_profesional_afin = $request->id_profesional_afin;
+            }
+            if (isset(Auth::user()->Profesional)) {
+                $turno->id_profesional = Auth::user()->id_profesional;
+            } else {
+                $turno->id_profesional = $request->id_profesional;
+            }
+            $turno->id_profesional_afin = $request->id_profesional_afin;
+            $turno->fecha = $request->fecha;
+
+            $turno->hora_inicio = $request->hora_inicio;
+            $turno->hora_fin = $request->hora_fin;
+            $turno->minuto_inicio = $request->minuto_inicio;
+            $turno->minuto_fin = $request->minuto_fin;
+
+            $turno->id_institucion = $request->id_institucion;
+            $turno->id_obra_social = $request->id_obra_social;
+            $turno->id_tipos_turno = $request->id_tipos_turno;
+            $turno->preanestesico = $request->preanestesico;
+            $turno->id_estado_turnos = $request->id_estado_turnos;
+            $turno->id_practica = $request->id_practica;
+            $cadenas =  explode(". ", $request->observacion);
+            $turno->observacion = null; //pongo la observacion en null para evitar repeticiones
+            foreach ($cadenas as $cadena) {
+                if ($turno->observacion != null) //si ya tiene algun valor agrrego . espacio nueva oracion
+                {
+                    $turno->observacion = $turno->observacion . '. ' . ucfirst($cadena);
+                } else { //si no tiene ningun valor solo nueva oracion (es la primer oracion)
+                    $turno->observacion = ucfirst($cadena);
+                }
+            }
+
+             $fecha= new Carbon($turno->fecha);
+            $turno->start = $fecha->format('Y-m-d') .'T'.  $turno->hora_inicio . ':'.$turno->minuto_inicio . ':00';
+            $turno->end = $fecha->format('Y-m-d') .'T'.  $turno->hora_inicio . ':'.$turno->minuto_inicio . ':00';
+              
+            $turno->title = isset($turno->Paciente) ? $turno->Paciente->nombre : 'Turno ' . $turno->id;
+            $turno->title = $turno->title .  (isset($turno->Profesional) ? ' - ' .$turno->Profesional->nombre : '' );
+            $turno->backgroundColor = '#ffffff';
+            $turno->borderColor = isset($turno->Institucion) ? $turno->Institucion->color : '#5589cdff';
+            $turno->textColor = isset($turno->Institucion) ? $turno->Institucion->color : '#5589cdff';
+      
+            $turno->save();
+          
+            session()->flash('alert-success', trans('message.successaction'));
+            return redirect($url)->with('success', 'Data saved successfully!');
+        } catch (QueryException  $ex) {
+
+            session()->flash('alert-danger', $ex->getMessage());
+            return redirect($url) ->with('error', 'Some problem occurred, please try again!');
+        }
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  int $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy(Request $request, $id)
+    {
+        try {
+
+            Turno::destroy($id);
+
+            session()->flash('alert-success', trans('message.successaction'));
+            return redirect()->route('admin.turnos.index');
+        } catch (QueryException  $ex) {
+            session()->flash('alert-danger', $ex->getMessage());
+            return redirect()->route('admin.turnos.index');
+        }
+    }
+
+
+    public function cambiar_estado($id, $id_estado)
+
+    {
+
+        try {
+
+            $turno = Turno::findOrFail($id);
+            $turno->id_estado_turnos = $id_estado;
+
+            $turno->save();
+
+            session()->flash('alert-success', trans('message.successaction'));
+            return redirect()->back();
+        } catch (QueryException  $ex) {
+
+            session()->flash('alert-danger', $ex->getMessage());
+            return redirect()->back();
+        }
+    }
+
+    public function createTurnoPaciente($id_paciente)
+    {
+        if (isset(Auth::user()->Profesional)) {
+            $minutos_profe = Auth::user()->Profesional->minutos_hab;
+            $hora_inicio_profe = Auth::user()->Profesional->hora_inicio;
+            $hora_fin_profe = Auth::user()->Profesional->hora_fin;
+        } else {
+            $minutos_profe =  env('MINUTOS');
+            $hora_inicio_profe =  env('HORA_INICIO');
+            $hora_fin_profe =   intval(env('HORA_FIN'));
+        }
+        $intervalo = '00';
+        while ($intervalo < 60) {
+            $minutos[$intervalo] = $intervalo;
+            $intervalo += $minutos_profe;
+        }
+
+        $horas = [];
+        $hora_inico = intval($hora_inicio_profe);
+        while ($hora_inico  <= $hora_fin_profe) {
+            if ($hora_inico < 10) {
+                $hora_inico = '0' . $hora_inico;
+            }
+            $horas[$hora_inico] = $hora_inico;
+            $hora_inico++;
+        }
+        $turno = new turno();
+
+        $turno->id_paciente = $id_paciente;
+
+        $pacientes = Paciente::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $pacientes = array('' => trans('message.select')) + $pacientes;
+
+        $profesionales = Profesional::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $profesionales = array('' => trans('message.select')) + $profesionales;
+
+        $profesionales_afines = ProfesionalAfin::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $profesionales_afines = array('' => trans('message.select')) + $profesionales_afines;
+
+
+        $instituciones = Institucion::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $instituciones = array('' => trans('message.select')) + $instituciones;
+
+        $estado_turnos = EstadoTurno::orderBy('denominacion')->pluck('denominacion', 'id')->all();
+        $estado_turnos = array('' => trans('message.select')) + $estado_turnos;
+
+        $tipos_turno = TipoTurno::orderBy('denominacion')->pluck('denominacion', 'id')->all();
+        $tipos_turno = array('' => trans('message.select')) + $tipos_turno;
+
+        $practicas = Practica::orderBy('denominacion')->pluck('denominacion', 'id')->all();
+        $practicas = array('' => trans('message.select')) + $practicas;
+
+        $obras_sociales = Obra_social::orderBy('denominacion_amigable')->pluck('denominacion_amigable', 'id')->all();
+        $obras_sociales = array('' => trans('message.select')) + $obras_sociales;
+
+        return view('admin.turnos.edit', compact(
+            'turno','obras_sociales',
+            'pacientes',
+            'practicas',
+            'profesionales',
+            'profesionales_afines',
+            'instituciones',
+            'horas',
+            'minutos',
+            'estado_turnos',
+            'tipos_turno'
+        ));
+    }
+
+
+    public function cronograma(Request $request)
+    {
+        if ($request->duracion_completa == 'Si') {
+            return $this->cronograma_entero($request);
+        } else {
+            return  $this->cronograma_inicio($request);
+        }
+    }
+
+    public function cronograma_inicio(Request $request)
+    {
+        if (isset(Auth::user()->Profesional)) {
+            $minutos_profe = Auth::user()->Profesional->minutos_hab;
+            $hora_inicio_profe = Auth::user()->Profesional->hora_inicio;
+            $hora_fin_profe = Auth::user()->Profesional->hora_fin;
+        } else {
+            $minutos_profe =  env('MINUTOS');
+            $hora_inicio_profe =  env('HORA_INICIO');
+            $hora_fin_profe =   intval(env('HORA_FIN'));
+        }
+        $intervalo = '00';
+        while ($intervalo < 60) {
+            $minutos[$intervalo] = $intervalo;
+            $intervalo += $minutos_profe;
+        }
+
+        $horas = [];
+        $hora_inico = intval($hora_inicio_profe);
+        while ($hora_inico  <= $hora_fin_profe) {
+            if ($hora_inico < 10) {
+                $hora_inico = '0' . $hora_inico;
+            }
+            $horas[$hora_inico] = $hora_inico;
+            $hora_inico++;
+        }
+        //definir horas laborales para poner el en cronograma       
+
+        if (isset($request->fec_desde)) {
+            $fecha_desde = new Carbon($request->fec_desde);
+        } else {
+            $fecha_desde = Carbon::today();
+        }
+
+        $fecha = new Carbon($fecha_desde);
+        if (isset($request->fec_hasta)) {
+            $fecha_hasta = new Carbon($request->fec_hasta);
+            // $fecha_hasta->addDays(1);
+        } else {
+            $fecha_hasta = new Carbon($fecha_desde);
+            $fecha_hasta->addDays(7);
+        }
+
+        $dias = [];
+
+        while ($fecha <= $fecha_hasta) {
+            $dias[] = new Carbon($fecha);
+            $fecha->addDays(1);
+        }
+
+        $turnos =  [];
+
+        foreach ($dias as $dia) {
+            $bandera = new Carbon($dia);
+            $bandera->addDays(1);
+
+            $time_desde = new Carbon($dia);
+            $time_hasta = new Carbon($dia);
+
+            foreach ($horas as $hora) {
+                $time_desde->hour($hora);
+                $time_hasta->hour($hora);
+                foreach ($minutos as $minuto) {
+                    $time_desde->minute($minuto);
+                    if ($minuto == 45) {
+                        $time_hasta->hour($hora + 1);
+                        $time_hasta->minute(0);
+                    } else {
+                        $time_hasta->minute($minuto + $minutos_profe);
+                    }
+
+                    $query = Turno::search_dia($request)
+                        ->where('fecha', '>=', $dia->format('Y-m-d'))
+                        ->where('fecha', '<', $bandera->format('Y-m-d'))
+                        ->where('hora_inicio', '=',  intval($time_desde->format('H')))
+                        ->where('minuto_inicio', '=', intval($time_desde->format('i')));
+
+                    $turnos[$dia->format('d')][$hora][$minuto] =  $query->get();
+                }
+            }
+        }
+
+        $estado_turnos = EstadoTurno::orderBy('denominacion')->pluck('denominacion', 'id')->all();
+        $estado_turnos = array('' => trans('message.select')) + $estado_turnos;
+
+        if (isset($request->id_estado_turnos)) {
+            $id_estado_turnos = $request->id_estado_turnos;
+        } else {
+            $id_estado_turnos = null;
+        }
+
+
+        $profesionales = Profesional::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $profesionales = array('' => trans('message.select')) + $profesionales;
+
+        if (isset($request->id_profesional)) {
+            $id_profesional = $request->id_profesional;
+        } else {
+            $id_profesional = null;
+        }
+
+
+        $instituciones = Institucion::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $instituciones = array('' => trans('message.select')) + $instituciones;
+
+        if (isset($request->id_institucion)) {
+            $id_institucion = $request->id_institucion;
+        } else {
+            $id_institucion = null;
+        }
+
+        $tipos_turno = TipoTurno::orderBy('denominacion')->get();
+        if (isset($request->duracion_completa)) {
+            $duracion_completa = $request->duracion_completa;
+        } else {
+            $duracion_completa = null;
+        }
+        return view('admin.turnos.cronograma', compact(
+            'turnos',
+            'duracion_completa',
+            'dias',
+            'fecha_hasta',
+            'fecha_desde',
+            'estado_turnos',
+            'id_estado_turnos',
+            'profesionales',
+            'id_profesional',
+            'instituciones',
+            'id_institucion',
+            'tipos_turno',
+            'horas',
+            'minutos'
+        ));
+    }
+
+    public function cronograma_entero(Request $request)
+    {
+        //
+        if (isset(Auth::user()->Profesional)) {
+            $minutos_profe = Auth::user()->Profesional->minutos_hab;
+            $hora_inicio_profe = Auth::user()->Profesional->hora_inicio;
+            $hora_fin_profe = Auth::user()->Profesional->hora_fin;
+        } else {
+            $minutos_profe =  env('MINUTOS');
+            $hora_inicio_profe =  env('HORA_INICIO');
+            $hora_fin_profe =   intval(env('HORA_FIN'));
+        }
+        $intervalo = '00';
+        while ($intervalo < 60) {
+            $minutos[$intervalo] = $intervalo;
+            $intervalo += $minutos_profe;
+        }
+
+        $horas = [];
+        $hora_inico = intval($hora_inicio_profe);
+        while ($hora_inico  <= $hora_fin_profe) {
+            if ($hora_inico < 10) {
+                $hora_inico = '0' . $hora_inico;
+            }
+            $horas[$hora_inico] = $hora_inico;
+            $hora_inico++;
+        }
+        //definir horas laborales para poner el en cronograma       
+
+        if (isset($request->fec_desde)) {
+            $fecha_desde = new Carbon($request->fec_desde);
+        } else {
+            $fecha_desde = Carbon::today();
+        }
+
+        $fecha = new Carbon($fecha_desde);
+        if (isset($request->fec_hasta)) {
+            $fecha_hasta = new Carbon($request->fec_hasta);
+            // $fecha_hasta->addDays(1);
+        } else {
+            $fecha_hasta = new Carbon($fecha_desde);
+            $fecha_hasta->addDays(7);
+        }
+
+        $dias = [];
+
+        while ($fecha <= $fecha_hasta) {
+            $dias[] = new Carbon($fecha);
+            $fecha->addDays(1);
+        }
+
+        $turnos =  [];
+
+        foreach ($dias as $dia) {
+            $bandera = new Carbon($dia);
+            $bandera->addDays(1);
+
+            $time_desde = new Carbon($dia);
+            $time_hasta = new Carbon($dia);
+            foreach ($horas as $hora) {
+                $time_desde->hour($hora);
+                $time_hasta->hour($hora);
+                foreach ($minutos as $minuto) {
+                    $time_desde->minute($minuto);
+                    if ($minuto == 45) {
+                        $time_hasta->hour($hora + 1);
+                        $time_hasta->minute(0);
+                    } else {
+                        $time_hasta->minute($minuto + $minutos_profe);
+                    }
+
+
+                    $query = Turno::search_dia($request)
+                        ->where('fecha', '>=', $dia->format('Y-m-d'))
+                        ->where('fecha', '<', $bandera->format('Y-m-d'));
+
+                    switch ($minuto) {
+                        case 00:
+
+                            $query = $query->where(function ($query) use ($time_desde, $time_hasta) {
+                                $query
+                                    ->where('hora_inicio', '>=',  intval($time_desde->format('H')))
+                                    ->where('minuto_inicio', '>=', intval($time_desde->format('i')))
+
+                                    ->where('hora_inicio', '<=',  intval($time_hasta->format('H')))
+                                    ->where('minuto_inicio', '<',  intval($time_hasta->format('i'))) //15
+
+                                    ->orWhere('hora_fin', '>=',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', '<',  intval($time_desde->format('H')))
+                                    ->where('minuto_fin', '>',  intval($time_desde->format('i'))) //00
+
+                                    ->orWhere('hora_fin', '>',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', '<',  intval($time_desde->format('H')))
+                                    ->where('minuto_fin', '>=',  intval($time_desde->format('i'))) //00
+                                ;
+                            });
+
+                        default:
+                            $query = $query->where(function ($query) use ($time_desde, $time_hasta) {
+                                $query
+                                    ->where('hora_inicio', '>=',  intval($time_desde->format('H')))
+                                    ->where('minuto_inicio', '>=', intval($time_desde->format('i')))
+                                    ->where('hora_inicio', '<=',  intval($time_hasta->format('H')))
+                                    ->where('minuto_inicio', '<',  intval($time_hasta->format('i'))) //15
+
+                                    ->orWhere('hora_fin', '>=',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', '<',  intval($time_desde->format('H')))
+                                    ->where('minuto_fin', '>',  intval($time_desde->format('i'))) //00
+
+                                    ->orWhere('hora_fin', '>',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', '<=',  intval($time_desde->format('H')))
+                                    ->where('minuto_inicio', '<=',  intval($time_desde->format('i'))) //00
+
+                                    ->orWhere('hora_fin', '>',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', '<',  intval($time_desde->format('H')))
+
+
+                                    ->orWhere('hora_fin',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', intval($time_desde->format('H')))
+                                    ->where('minuto_fin', '>',  intval($time_desde->format('i')))
+                                ;
+                            });
+                            $turnos[$dia->format('d')][$hora][$minuto] =  $query->get();
+
+                            //24-09-24 quedo andando bien las 00 con un tercer or
+                            /*     break;
+                        case 15:
+                            $query = $query->where(function ($query) use ($time_desde, $time_hasta) {
+                                $query
+                                    ->where('hora_inicio', '>=',  intval($time_desde->format('H')))
+                                    ->where('minuto_inicio', '>=', intval( $time_desde->format('i')))        
+                                    ->where('hora_inicio', '<=',  intval($time_hasta->format('H')))
+                                    ->where('minuto_inicio', '<',  intval($time_hasta->format('i'))) //15
+                                  
+                                   ->orWhere('hora_fin', '>=',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', '<',  intval($time_desde->format('H')))
+                                    ->where('minuto_fin', '>',  intval($time_desde->format('i'))) //00
+
+                                    ->orWhere('hora_fin', '>',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', '<=',  intval($time_desde->format('H')))
+                                    ->where('minuto_inicio', '<=',  intval($time_desde->format('i'))) //00
+
+                                    ->orWhere('hora_fin', '>=',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', '<',  intval($time_desde->format('H')))
+                                    ->where('minuto_fin', '<',  intval($time_hasta->format('i')))
+                                    ->where('minuto_fin', '>=',  intval($time_desde->format('i'))) //00
+                                 //
+                                    ->orWhere('hora_fin', '>',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', '<',  intval($time_desde->format('H')))
+                                   ;
+                            }); 
+                            break;
+                        case 30:
+                            $query = $query->where(function ($query) use ($time_desde, $time_hasta) {
+                                $query
+                                    ->where('hora_inicio', '>=',  intval($time_desde->format('H')))
+                                    ->where('minuto_inicio', '>=', intval( $time_desde->format('i')))        
+                                    ->where('hora_inicio', '<=',  intval($time_hasta->format('H')))
+                                    ->where('minuto_inicio', '<',  intval($time_hasta->format('i'))) //15
+                                  
+                                   ->orWhere('hora_fin', '>=',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', '<',  intval($time_desde->format('H')))
+                                    ->where('minuto_fin', '>',  intval($time_desde->format('i'))) //00
+
+                                    ->orWhere('hora_fin', '>',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', '<=',  intval($time_desde->format('H')))
+                                    ->where('minuto_inicio', '<=',  intval($time_desde->format('i'))) //00
+
+                                    ->orWhere('hora_fin', '>',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', '<',  intval($time_desde->format('H')))
+
+
+                                    ->orWhere('hora_fin',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', intval($time_desde->format('H')))
+                                    ->where('minuto_fin', '>',  intval($time_desde->format('i')))
+                                    ;
+                            }); 
+                              break;
+                        case 45:
+                            $query = $query->where(function ($query) use ($time_desde, $time_hasta) {
+                                $query
+                                    ->where('hora_inicio', '>=',  intval($time_desde->format('H')))
+                                    ->where('minuto_inicio', '>=', intval( $time_desde->format('i')))        
+                                    ->where('hora_inicio', '<=',  intval($time_hasta->format('H')))
+                                    ->where('minuto_inicio', '<',  intval($time_hasta->format('i'))) //15
+                                  
+                                   ->orWhere('hora_fin', '>=',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', '<',  intval($time_desde->format('H')))
+                                    ->where('minuto_fin', '>',  intval($time_desde->format('i'))) //00
+
+                                    ->orWhere('hora_fin', '>',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', '<=',  intval($time_desde->format('H')))
+                                    ->where('minuto_inicio', '<=',  intval($time_desde->format('i'))) //00
+
+                               
+                                   ->orWhere('hora_fin', '>',  intval($time_desde->format('H')))
+                                    ->where('hora_inicio', '<',  intval($time_desde->format('H')))
+                                   ;
+                            });//12 30  14 00           14 30
+                            
+                            
+                            $turnos[$dia->format('d')][$hora][$minuto] =  $query->get();
+
+                         /*   if($dia->format('d') == 27 && $hora == 15 && $minuto = '15' )
+                            {
+                           //     dd($time_desde->format('H'), $time_desde->format('i'), intval($time_hasta->format('i')), $turnos[$dia->format('d')][$hora][$minuto] , $time_desde, $time_hasta , $dia, $bandera);
+                            }  
+                              break; */
+                    }
+                }
+            }
+        }
+        //dd( $minutos,$turnos);
+
+
+        $estado_turnos = EstadoTurno::orderBy('denominacion')->pluck('denominacion', 'id')->all();
+        $estado_turnos = array('' => trans('message.select')) + $estado_turnos;
+
+        if (isset($request->id_estado_turnos)) {
+            $id_estado_turnos = $request->id_estado_turnos;
+        } else {
+            $id_estado_turnos = null;
+        }
+
+
+        $profesionales = Profesional::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $profesionales = array('' => trans('message.select')) + $profesionales;
+
+        if (isset($request->id_profesional)) {
+            $id_profesional = $request->id_profesional;
+        } else {
+            $id_profesional = null;
+        }
+
+
+        $instituciones = Institucion::orderBy('nombre')->pluck('nombre', 'id')->all();
+        $instituciones = array('' => trans('message.select')) + $instituciones;
+
+        if (isset($request->id_institucion)) {
+            $id_institucion = $request->id_institucion;
+        } else {
+            $id_institucion = null;
+        }
+
+        $tipos_turno = TipoTurno::orderBy('denominacion')->get();
+
+        if (isset($request->duracion_completa)) {
+            $duracion_completa = $request->duracion_completa;
+        } else {
+            $duracion_completa = null;
+        }
+        return view('admin.turnos.cronograma', compact(
+            'turnos',
+            'dias',
+            'duracion_completa',
+            'fecha_hasta',
+            'fecha_desde',
+            'estado_turnos',
+            'id_estado_turnos',
+            'profesionales',
+            'id_profesional',
+            'instituciones',
+            'id_institucion',
+            'tipos_turno',
+            'horas',
+            'minutos'
+        ));
+    }
+
+     public function calendario()
+    { 
+        $instituciones = Institucion::orderBy('nombre') ->get();
+        return view('admin.turnos.calendario', compact('instituciones'));
+    }
+
+     public function fullcalendar(Request $request)
+    {
+        $evento = Turno::all();
+      /*  foreach($evento as $turno)
+        {          
+            $fecha= new Carbon($turno->fecha);
+            $turno->start = $fecha->format('Y-m-d') .'T'.  $turno->hora_inicio . ':'.$turno->minuto_inicio . ':00';
+            $turno->end = $fecha->format('Y-m-d') .'T'.  $turno->hora_inicio . ':'.$turno->minuto_inicio . ':00';
+             
+            $turno->allDay  = false ;
+            $turno->title = isset($turno->Paciente) ? $turno->Paciente->nombre : 'Turno ' . $turno->id;
+            $turno->title = $turno->title .  (isset($turno->Profesional) ? ' - ' .$turno->Profesional->nombre : '' );
+            $turno->backgroundColor = '#ffffff';
+            $turno->borderColor = isset($turno->Institucion) ? $turno->Institucion->color : '#5589cdff';
+            $turno->textColor = isset($turno->Institucion) ? $turno->Institucion->color : '#5589cdff';
+        }*/
+
+     
+      return  response()->json( $evento);
+    }
+
+      public function migrarDatos()
+    {
+         $evento = Turno::all();
+        foreach($evento as $turno)
+        {          
+            $fecha= new Carbon($turno->fecha);
+            $turno->start = $fecha->format('Y-m-d') .'T'.  $turno->hora_inicio . ':'.$turno->minuto_inicio . ':00';
+            $turno->end = $fecha->format('Y-m-d') .'T'.  $turno->hora_inicio . ':'.$turno->minuto_inicio . ':00';
+             
+           // $turno->allDay  = 'false' ;
+            $turno->title = isset($turno->Paciente) ? $turno->Paciente->nombre : 'Turno ' . $turno->id;
+            $turno->title = $turno->title .  (isset($turno->Profesional) ? ' - ' .$turno->Profesional->nombre : '' );
+            $turno->backgroundColor = '#ffffff';
+            $turno->borderColor = isset($turno->Institucion) ? $turno->Institucion->color : '#5589cdff';
+            $turno->textColor = isset($turno->Institucion) ? $turno->Institucion->color : '#5589cdff';
+              $turno->save();
+        }
+return redirect()->back();
+    }
+    public function fullcalendarAjax(Request $request)
+    {
+        if($request->id >= 1)
+        {
+         return $this->edit($request->id );
+        }
+        else
+        {  
+            $fecha = new Carbon($request->start);
+            
+            return $this->create_fecha($fecha->format('H'),$fecha->format('i'),$fecha->format('d-m-Y'));
+        }          
+    }
+
+
+
+
+    /*    // Generate TXT
+    public function createTXT()
+    {
+      //  $clientes = Cliente::get();
+        $clientes = ClienteServicios::select('id_cliente')->groupby('id_cliente')->get();
+
+       // dd( $clientes , $clientes_2);
+        $fecha_cobro = new Carbon();
+        $fecha_cobro->firstOfMonth();
+        $fecha_cobro->addDays(9);
+
+        $fecha_presentacion = new Carbon();
+
+        if ($fecha_cobro->format('l') == 'Sunday' || $fecha_cobro->format('l') == 'Saturday') {
+            $searchDay = 'Monday';
+            $fecha_cobro = Carbon::createFromTimeStamp(strtotime("next $searchDay", $fecha_cobro->timestamp));
+        }
+
+        $cantidad_clientes = count($clientes);
+        $cantidad_clientes = str_pad($cantidad_clientes, 6, "0", STR_PAD_LEFT);
+
+
+        $importe_total = 0;
+        foreach ($clientes as $cliente) {
+          //  dd($cliente->id_cliente);
+            $cliente = Cliente::find($cliente->id_cliente);
+            $importe_cobrar = 0;
+            $t =0;
+            $valores = [];
+            foreach ($cliente->ClienteServicios as $servicio) { 
+               $fecha_hasta = new Carbon($servicio->fecha_hasta);
+                if ($fecha_hasta  >= $fecha_presentacion || is_null($servicio->fecha_hasta)) {
+                    $valor = ServicioValor::where('id_servicio', $servicio->id_servicio)
+                        ->where('fecha', '<=', $fecha_cobro)
+                        ->OrderBy('fecha', 'desc')->first();
+                    $importe_cobrar += $valor->valor;
+                    $t++;
+                    $valores[]=$valor->valor;
+                }
+                 
+            }
+           
+            if($cliente->descuento > 0)
+            {
+                $importe_cobrar = $importe_cobrar - ($importe_cobrar  * 10 /100 );
+            }
+  
+            $whole = (int)floor($importe_cobrar);      // 1
+            $fraction = ($importe_cobrar - $whole) * 1000; // .25
+            $fraction = (int)$fraction;
+            //formatear a 14 digitos ultimos 3 digitos son decimales
+            $whole = str_pad($whole, 11, "0", STR_PAD_LEFT);
+            $fraction = str_pad($fraction, 3, "0", STR_PAD_LEFT);
+            $importe_total += $importe_cobrar;
+
+            //cbu formatear a 22 caracteres con 00 delante 
+            $cliente->cbu = substr($cliente->cbu, 0, 22);
+            $cliente->cbu = str_pad($cliente->cbu, 22, "0", STR_PAD_LEFT);
+
+
+            //id cliente formatear a 12 caracteres con 0 delante 
+            $numero_cliente = substr($cliente->id, 0, 10);
+            $numero_cliente = str_pad($numero_cliente, 10, "0", STR_PAD_LEFT);
+            //cuit formatear a 11 caracteres con 0 delante 
+            $cliente->cuit = substr($cliente->cuit, 0, 11);
+            $cliente->cuit = str_pad($cliente->cuit, 11, "0", STR_PAD_LEFT);
+            //denominacion formatear a 16 caracteres completar con espacios al final
+            $cliente->denominacion = str_replace('Ñ','N', strtoupper($cliente->denominacion));
+            $cliente->denominacion = substr($cliente->denominacion, 0, 16);
+            $cliente->denominacion = str_pad($cliente->denominacion, 16, ' ', STR_PAD_RIGHT);
+
+            $linea[] =   $cliente->TipoCliente->codigo . '0000' . $cliente->cbu . '01' . $whole . $fraction .
+                $fecha_cobro->format('Ymd') . $numero_cliente . $cliente->cuit . $cliente->denominacion . 'GEOSECURITY' 
+               ;
+        }
+
+        $whole = (int)floor($importe_total);      // 1
+        $fraction = ($importe_total - $whole) * 1000; // .25
+        $fraction = (int)$fraction;
+        //formatear a 14 digitos ultimos 3 digitos son decimales
+        $whole = str_pad($whole, 11, "0", STR_PAD_LEFT);
+        $fraction = str_pad($fraction, 3, "0", STR_PAD_LEFT); 
+       
+        $cabecera[] = '999604520101' . $fecha_presentacion->format('Ymd') . '000001' . $whole . $fraction
+            . $cantidad_clientes . 'SERVICIO            ' . $fecha_presentacion->format('Ymd')
+            .'                                                                                                                                                       ' . PHP_EOL;
+
+        foreach ($linea as $lin) {
+            $cabecera[] = $lin.            '                                                                                                                             ' . PHP_EOL;
+        }
+        // $cabecera[] = $linea;
+        //   $data = json_encode( $linea);        
+        $data =  $cabecera;
+        File::put(public_path('/archivo.txt'), $data);
+        return Response::download(public_path('/archivo.txt'), 'TXT_'.$fecha_cobro->format('m-Y').'.txt');
+    }
+
+  
+
+    public function createPDF()
+    {
+        $clientes = Cliente::get();
+        $fecha_presentacion = new Carbon();
+                $data = [
+            'clientes' => $clientes ,
+            'fecha_presentacion' =>  $fecha_presentacion
+        ]; 
+        $pdf = PDF::loadView('admin.clientes.createPDF', $data);
+         
+       
+        return $pdf->download('Listado_Servicios_Activos.pdf') ;
+    }
+     */
+    /*
+    $clientes = Cliente::get();
+        //$linea = '';
+        foreach($clientes as $cliente)
+        {
+            $linea[] =   $cliente->id.'00000'.$cliente->denominacion.'00012300 1500.23';
+        }
+       // $data =$dat;
+      /*    $data = [
+            'lineas' => $linea,
+            'date' => date('m/d/Y') 
+        ]; 
+            
+        $pdf = PDF::loadView('admin.clientes.createPDF', $data);
+     
+        return $pdf->download('probando.pdf') ;*/
+}

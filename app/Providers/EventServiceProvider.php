@@ -1,0 +1,155 @@
+<?php
+
+namespace App\Providers;
+
+use Illuminate\Auth\Events\Registered;
+use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
+use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
+use JeroenNoten\LaravelAdminLte\Events\BuildingMenu;
+
+class EventServiceProvider extends ServiceProvider
+{
+    /**
+     * The event to listener mappings for the application.
+     *
+     * @var array<class-string, array<int, class-string>>
+     */
+    protected $listen = [
+        Registered::class => [
+            SendEmailVerificationNotification::class,
+        ],
+    ];
+
+    /**
+     * Register any events for your application.
+     *
+     * @return void
+     */
+    public function boot()
+    {
+        //
+        Event::listen(BuildingMenu::class, function (BuildingMenu $event) {
+            // Add some items to the menu...
+            // $event->menu->add('MAIN NAVIGATION');
+            $event->menu->add(
+                [
+                    'key'     => 'Turnos',
+                    'text'        => 'Turnos',
+                    'url'         => 'admin/turnos',
+                    'icon'        => 'fa fa-calendar',
+                    'submenu' => [
+                         [
+                            'text' => 'Listado',
+                            'url' => 'admin/turnos',
+                            'icon' => 'fa fa-calendar',
+                        ],
+                        [
+                            'text' => 'Calendario',
+                            'url' => 'admin/turnos/calendario',
+                            'icon' => 'fa fa-calendar',
+                        ],
+                        [
+                            'text' => 'Cronograma',
+                            'url' => 'admin/turnos/cronograma',
+                            'icon' => 'fa fa-calendar',
+                        ],
+                        ],
+                ],  
+                [
+                    'text'        => 'Evaluaciones Anestesicas',
+                    'url'         => 'admin/evaluaciones_anestesicas',
+                    'icon'        => 'fa fa-file',
+
+                ],
+                [
+
+                    'text'        => 'Tipos de Turnos',
+                    'url'         => 'admin/tipos_turno',
+                    'icon'        => 'fa fa-ambulance',
+                ],
+
+                [
+                    'text'        => 'Pacientes',
+                    'url'         => 'admin/pacientes',
+                    'icon'        => 'fa fa-user-plus',
+
+                ],
+                [
+                    'text'        => 'Obras Sociales',
+                    'url'         => 'admin/obras_sociales',
+                    'icon'        => 'fa fa-address-card',
+
+                ],
+                [
+                    'text'        => 'Valores',
+                    'url'         => 'admin/valores',
+                    'icon'        => 'fa fa-envelope',
+
+                ],
+
+
+                [
+                    'text'        => 'Prácticas',
+                    'url'         => 'admin/practicas',
+                    'icon'        => 'fa fa-sign-language',
+
+                ],
+
+                [
+                    'text'        => 'Instituciones',
+                    'url'         => 'admin/instituciones',
+                    'icon'        => 'fa fa-hospital',
+
+                ],
+                [
+                    'text'        => 'Profesionales Afines',
+                    'url'         => 'admin/profesionales_afines',
+                    'icon'        => 'fa fa-user-md',
+
+                ],
+                    [
+                    'text'        => 'Vacaciones',
+                    'url'         => 'admin/vacaciones',
+                    'icon'        => 'fa fa-user-md',
+
+                ]
+
+            );
+            if (!isset(Auth::user()->Profesional)) {
+                $event->menu->add(
+                    [
+                        'text'        => 'Anestesiólogos',
+                        'url'         => 'admin/profesionales',
+                        'icon'        => 'fa fa-user-md',
+
+                    ],
+                    [
+                        'text'        => 'Especialidades',
+                        'url'         => 'admin/especialidades',
+                        'icon'        => 'fa fa-university',
+
+                    ],
+                    [
+                        'text' => 'Usuarios',
+                        'url' => 'admin/users',
+                        'icon'        => 'fa fa-user',
+
+                    ]
+                );
+            }
+            
+        });
+    }
+
+    /**
+     * Determine if events and listeners should be automatically discovered.
+     *
+     * @return bool
+     */
+    public function shouldDiscoverEvents()
+    {
+        return false;
+    }
+}
