@@ -21,7 +21,7 @@
                      <div class="container text-center">
 
                          <div class="bg-secondary text-white">
-                             <div class="p-3" style="text-transform:uppercase; font-weight: bolder">Instituciones
+                             <div class="p-3" style="text-transform:uppercase; font-weight: bolder">Boxes
                              </div>
                          </div>
                          <div class="list-group" style="padding: 1em">
@@ -79,6 +79,8 @@
          document.addEventListener('DOMContentLoaded', function() {
              var calendarEl = document.getElementById('calendar');
              var calendar = new FullCalendar.Calendar(calendarEl, {
+  schedulerLicenseKey: 'CC-Attribution-NonCommercial-NoDerivatives',
+
                  locale: 'es',
                   height: 'auto', 
                  

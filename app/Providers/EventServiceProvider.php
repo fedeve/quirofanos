@@ -97,8 +97,8 @@ class EventServiceProvider extends ServiceProvider
 
                 ],
 
-                [
-                    'text'        => 'Instituciones',
+               [
+                    'text'        => 'Boxes',
                     'url'         => 'admin/instituciones',
                     'icon'        => 'fa fa-hospital',
 

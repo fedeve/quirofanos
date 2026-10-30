@@ -19,23 +19,6 @@ class InstitucionesSeeder extends Seeder
         Institucion::create([
             'nombre' => 'Instituto Médico Los Arroyos'
         ]);
-        Institucion::create([
-            'nombre' => 'Hospital Provincial de Agudos San Felipe'
-        ]);
-        Institucion::create([
-            'nombre' => 'Hospital Jose Maria Gomendio'
-        ]);
-
-        Institucion::create([
-            'nombre' => 'Fundación Nuestra Señora Del Rosario'
-        ]);
-
-        Institucion::create([
-            'nombre' => 'Clínica Diagnóstico'
-        ]);
-
-        Institucion::create([
-            'nombre' => 'Clínica San Nicolás'
-        ]);
+       
     }
 }
