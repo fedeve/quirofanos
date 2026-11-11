@@ -23,7 +23,7 @@ class Turno extends Model
     'id_estado_turnos' ,'id_tipos_turno', 'id_institucion', 'observacion' , 'minuto_inicio', 'minuto_fin'
     , 'preanestesico','id_profesional_afin','id_obra_social'
 //calendar info
-    ,'start','end', 'title','backgroundColor','borderColor','textColor'];
+    ,'start','end', 'title','backgroundColor','borderColor','textColor', 'resourceIds'];
 
      
     protected $table = 'turnos';

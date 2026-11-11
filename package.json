@@ -16,8 +16,18 @@
     },
     "dependencies": {
         "@fortawesome/fontawesome-free": "^6.7.2",
-        "fullcalendar": "^6.1.19",
+        "@fullcalendar/core": "^6.1.22",
+        "@fullcalendar/daygrid": "^6.1.22",
+        "@fullcalendar/interaction": "^6.1.22",
+        "@fullcalendar/list": "^6.1.22",
+        "@fullcalendar/resource": "^6.1.22",
+        "@fullcalendar/resource-timegrid": "^6.1.22",
+        "@fullcalendar/resource-timeline": "^6.1.22",
+        "@fullcalendar/timegrid": "^6.1.22",
+        "clsx": "^2.1.1",
+        "fullcalendar": "^6.1.22",
         "icheck-bootstrap": "^3.0.1",
-        "overlayscrollbars": "^2.10.0"
+        "overlayscrollbars": "^2.10.0",
+        "temporal-polyfill": "^1.0.8"
     }
 }

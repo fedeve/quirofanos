@@ -1,4 +1,6 @@
-<link href="//code.jquery.com/ui/1.12.1/themes/smoothness/jquery-ui.css" rel="stylesheet" />
+@if($type == 'css')
+    <link href="//code.jquery.com/ui/1.12.1/themes/smoothness/jquery-ui.css" rel="stylesheet" />
+@endif
 @foreach(config('adminlte.plugins') as $pluginName => $plugin)
     @if($plugin['active'] || View::getSection('plugins.' . ($plugin['name'] ?? $pluginName)))
         @foreach($plugin['files'] as $file)
@@ -21,4 +23,6 @@
         @endforeach
     @endif
 @endforeach
-<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script> 
+@if($type == 'js')
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+@endif

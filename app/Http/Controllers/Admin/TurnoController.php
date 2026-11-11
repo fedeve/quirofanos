@@ -13,6 +13,7 @@ use App\Models\TipoTurno;
 use App\Models\Practica;
 use App\Models\ProfesionalAfin;
 use Carbon\Carbon;
+use Faker\Extension\BloodExtension;
 use Illuminate\Http\Request;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
@@ -981,10 +982,23 @@ class TurnoController extends Controller
      public function fullcalendar(Request $request)
     {
         $evento = Turno::all();
-      /*  foreach($evento as $turno)
+        foreach($evento as $turno)
         {          
-            $fecha= new Carbon($turno->fecha);
-            $turno->start = $fecha->format('Y-m-d') .'T'.  $turno->hora_inicio . ':'.$turno->minuto_inicio . ':00';
+            
+            $turno->resourceId  =   $turno->id_institucion ;
+        }
+
+     
+      return  response()->json( $evento);
+    }
+
+     public function resourcescalendar(Request $request)
+    {
+        $resources = Institucion::all();
+     foreach($resources as $resource)
+        {          
+            $resource->title =$resource->nombre;
+          /*  $turno->start = $fecha->format('Y-m-d') .'T'.  $turno->hora_inicio . ':'.$turno->minuto_inicio . ':00';
             $turno->end = $fecha->format('Y-m-d') .'T'.  $turno->hora_inicio . ':'.$turno->minuto_inicio . ':00';
              
             $turno->allDay  = false ;
@@ -993,10 +1007,10 @@ class TurnoController extends Controller
             $turno->backgroundColor = '#ffffff';
             $turno->borderColor = isset($turno->Institucion) ? $turno->Institucion->color : '#5589cdff';
             $turno->textColor = isset($turno->Institucion) ? $turno->Institucion->color : '#5589cdff';
-        }*/
+       */ } 
 
      
-      return  response()->json( $evento);
+      return  response()->json( $resources);
     }
 
       public function migrarDatos()
